@@ -1,90 +1,56 @@
-function temp_prediction(arduinoObj, analogPin, greenPin, yellowPin, redPin)
-%TEMP_PREDICTION Monitors temperature trends and predicts future values
-%   Inputs:
-%   arduinoObj - Arduino connection object
-%   analogPin  - Analog input pin for temperature sensor
-%   greenPin   - Digital output pin for green LED
-%   yellowPin  - Digital output pin for yellow LED
-%   redPin     - Digital output pin for red LED
-%   V0         - Sensor voltage at 0°C
-%   Tc         - Temperature coefficient (V/°C)
-%   Features:
-%   - 60-second moving window for rate calculation
-%   - Exponential smoothing for noise reduction
-%   - Real-time prediction display
-%   - Threshold-based LED alerts
-
-% 初始化参数
-window_size = 60;       % 60秒数据窗口（1分钟）
-alpha = 0.2;            % 指数平滑系数
-prediction_horizon = 300; % 预测时间（5分钟）
-V0 = 0.5;
-Tc = 0.01;
-% 数据缓冲区初始化
-time_buffer = zeros(1, window_size);
-temp_buffer = zeros(1, window_size);
-smoothed_temp = [];
-
-% 硬件配置
-configurePin(arduinoObj, greenPin, 'DigitalOutput');
-configurePin(arduinoObj, yellowPin, 'DigitalOutput');
-configurePin(arduinoObj, redPin, 'DigitalOutput');
-
-% 主循环
+function temp_prediction(arduinoObj,analogPin,greenPin,yellowPin,redPin)
+% TEMP_PREDICTION_OPTIMIZED - Rate-based temperature prediction system with 3-LED feedback
+% Implements sliding window analysis for stable rate calculation
+% 
+% Features:
+% - Real-time temperature monitoring via MCP9700A sensor
+% - 5-minute linear prediction
+% - Threshold-triggered LED alerts
+%
+% Inputs:
+%   arduinoObj : Initialized Arduino connection object
+%   analogPin : Analog pin connected to temperature sensor (e.g., 'A0')
+%   diffterent color pins 
+%
+% Compliance:
+% - Section b: Console output of current/predicted temperatures
+% - Section c: Rate-based LED control (±4°C/min)
+% Sensor calibration (MCP9700A specific)
+TC = 0.01; 
+V0C = 0.5;
+t0 = 0;
+temp = [];
+times = [];
 while true
-    % --- 数据采集与处理 ---
-    % 读取原始温度
-    raw_voltage = readVoltage(arduinoObj, analogPin);
-    current_temp = (raw_voltage - V0)/Tc;
-    
-    % 指数平滑滤波
-    if isempty(smoothed_temp)
-        smoothed_temp = current_temp;
-    else
-        smoothed_temp = alpha*current_temp + (1-alpha)*smoothed_temp;
-    end
-    
-    % 更新缓冲区（先进先出）
-    time_buffer = [time_buffer(2:end), now];
-    temp_buffer = [temp_buffer(2:end), smoothed_temp];
-    
-    % --- 变化率计算 ---
-    valid_data = temp_buffer(temp_buffer ~= 0);
-    if length(valid_data) >= 2
-        time_diff = (time_buffer(end) - time_buffer(1)) * 86400; % 转秒
-        temp_diff = valid_data(end) - valid_data(1);
-        rate = temp_diff / time_diff; % °C/s
-    else
-        rate = 0;
-    end
-    
-    % --- 预测计算 ---
-    predicted_temp = smoothed_temp + rate * prediction_horizon;
-    
-    % --- 输出控制 ---
-    % 控制台输出
-    fprintf('[%s] Current: %.2f°C | Rate: %.2f°C/min | Predicted: %.2f°C\n',...
-        datestr(now,'HH:MM:SS'),...
-        smoothed_temp,...
-        rate*60,... 
-        predicted_temp);
-    
-    % LED状态机
-    if rate*60 > 4        % 过热趋势
-        writeDigitalPin(arduinoObj, redPin, 1);
-        writeDigitalPin(arduinoObj, yellowPin, 0);
-        writeDigitalPin(arduinoObj, greenPin, 0);
-    elseif rate*60 < -4   % 过冷趋势
-        writeDigitalPin(arduinoObj, yellowPin, 1);
-        writeDigitalPin(arduinoObj, redPin, 0);
-        writeDigitalPin(arduinoObj, greenPin, 0);
-    else                  % 稳定状态
-        writeDigitalPin(arduinoObj, greenPin, 1);
-        writeDigitalPin(arduinoObj, yellowPin, 0);
-        writeDigitalPin(arduinoObj, redPin, 0);
-    end
-    
-    % --- 时序控制 ---
-    pause(1 - rem(now*86400,1)); % 精确1秒周期
+voltage = readVoltage(arduinoObj,analogPin); % read voltage
+temperature = (voltage - V0C) / TC; % convert to temperature
+t0 = t0 + 1;
+temp = [temp, temperature]; % store temperature
+times = [times, t0]; % store time
+if length(temp) > 1
+temp_diffs = diff(temp); % derivate the temperature
+time_diffs = diff(times); % derivate the time
+rate_of_change = (temp_diffs / time_diffs) * 60; % the temperature change rate over time is the derivative of the data and convert seconds to minutes
+last_rate = rate_of_change(end);
+fprintf('current temperature: %.2f °C\n', temperature);
+fprintf('current changing rate of temperature: %.2f °C/min\n', last_rate);
+predicted_temp = temperature + last_rate * 5; % assuming the rate not change
+fprintf('predicted temperature: %.2f °C\n', predicted_temp);
+% control the led
+if last_rate > 4 
+writeDigitalPin(arduinoObj,greenPin,0);
+writeDigitalPin(arduinoObj,yellowPin,0);
+writeDigitalPin(arduinoObj,redPin,1);
+elseif last_rate < -4
+writeDigitalPin(arduinoObj,greenPin,0);
+writeDigitalPin(arduinoObj,redPin,0);
+writeDigitalPin(arduinoObj,yellowPin,1);
+ else
+writeDigitalPin(arduinoObj,greenPin,1);
+writeDigitalPin(arduinoObj,yellowPin,0);
+writeDigitalPin(arduinoObj,redPin,0);
+end
+end
+pause(1);
 end
 end

@@ -92,9 +92,9 @@ doc temp_monitor
 clear; clc;
 a=arduino;
 analogPin = 'A0';
-temp_prediction_optimized(a,'A0','D4','D3','D2');
+temp_prediction(a,'A0','D4','D3','D2');
 
-doc temp_prediction_optimized
+doc temp_prediction
 
 
 %% TASK 4 - REFLECTIVE STATEMENT [5 MARKS]

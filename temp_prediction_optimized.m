@@ -1,0 +1,120 @@
+function temp_prediction_optimized(arduinoObj, analogPin, greenPin, yellowPin, redPin)
+% TEMP_PREDICTION_OPTIMIZED - Rate-based temperature prediction system with 3-LED feedback
+% Implements sliding window analysis for stable rate calculation
+% 
+% Features:
+% - Real-time temperature monitoring via MCP9700A sensor
+% - 5-minute linear prediction using sliding window regression
+% - Threshold-triggered LED alerts
+%
+% Inputs:
+%   arduinoObj : Initialized Arduino connection object
+%   analogPin : Analog pin connected to temperature sensor (e.g., 'A0')
+%   diffterent color pins    : Struct containing LED pins (green/yellow/red fields)
+%
+% Compliance:
+% - Section a: 60-second data window for stable rate calculation
+% - Section b: Console output of current/predicted temperatures
+% - Section c: Rate-based LED control (±4°C/min thresholds)
+
+% Sensor calibration parameters (MCP9700A specific)
+V0 = 0.5;       % Voltage at 0°C (from datasheet)
+Tc = 0.01;      % Temperature coefficient (10mV/°C conversion factor)
+WINDOW_SIZE = 60; % 60-second analysis window (complies Section a)
+THRESHOLD = 4;   % Rate threshold in °C/min (complies Section c)
+
+% Initialize LED digital outputs (complies Section c)
+configurePin(arduinoObj, greenPin, 'DigitalOutput');
+configurePin(arduinoObj, yellowPin, 'DigitalOutput');
+configurePin(arduinoObj, redPin, 'DigitalOutput');
+
+% Initialize circular buffer for sliding window (complies Section a)
+buffer = struct(...
+    'temps', zeros(1, WINDOW_SIZE),... % Temperature storage
+    'times', zeros(1, WINDOW_SIZE),... % Timestamp storage
+    'idx', 1,...                       % Current write index
+    'count', 0);                       % Valid data counter
+
+% Main monitoring loop (continuous operation)
+while true
+    % Read and convert temperature (complies Section b)
+    [temp, currentTime] = readSensor(arduinoObj, analogPin, V0, Tc);
+    
+    % Update sliding window buffer (complies Section a)
+    buffer = updateBuffer(buffer, temp, currentTime);
+    
+    % Calculate rate and prediction (complies Section a)
+    [rate, prediction] = calculateTrend(buffer);
+    
+    % Throttled console output (complies Section b)
+    printStatus(currentTime, temp, rate, prediction);
+    
+    % Update LED states (complies Section c)
+    updateLEDs(arduinoObj, greenPin, yellowPin, redPin, rate);
+    
+    pause(1); % 1-second update cycle (timing control per Section f)
+end
+
+%% Nested Functions used above
+function [temp, time] = readSensor(arduinoObj, analogPin, V0, Tc)
+% READSENSOR - Acquires and converts sensor data
+% Outputs:
+%   temp : Temperature in °C
+%   time : Measurement timestamp
+    voltage = readVoltage(arduinoObj, analogPin);
+    temp = (voltage - V0)/Tc; % Convert to temperature
+    time = datetime('now'); % Capture current system time
+end
+
+function buffer = updateBuffer(buf, temp, time)
+% UPDATEBUFFER - Manages sliding window storage
+% Implements circular buffer pattern for efficient memory usage
+    buf.temps(buf.idx) = temp;
+    buf.times(buf.idx) = time;
+    buf.idx = mod(buf.idx, WINDOW_SIZE) + 1; % Circular indexing
+    buf.count = min(buf.count + 1, WINDOW_SIZE); % Track valid entries
+end
+
+function [rate, prediction] = calculateTrend(buf)
+% CALCULATETREND - Computes temperature trend using linear regression
+% Returns:
+%   rate       : Temperature change rate (°C/min)
+%   prediction : Projected temperature in 5 minutes
+    if buf.count < 2
+        rate = 0;
+        prediction = buf.temps(1);
+        return
+    end
+    
+    % Convert timestamps to relative seconds
+    t = (buf.times(1:buf.count) - buf.times(1)) * 86400;
+    
+    % Linear regression (polyfit order 1)
+    coeffs = polyfit(t, buf.temps(1:buf.count), 1);
+    rate = coeffs(1) * 60; % Convert °C/s to °C/min
+    
+    % 5-minute prediction (t_end + 5minutes)
+    prediction = polyval(coeffs, t(end) + 300);
+end
+
+function printStatus(time, temp, rate, prediction)
+% PRINTSTATUS - Managed console output with 5-second throttling
+    persistent lastPrint;
+    if isempty(lastPrint) || etime(datevec(time), datevec(lastPrint)) >= 5
+        fprintf('[%s] Current: %.2f°C | Rate: %.2f°C/min | Predicted: %.2f°C\n',...
+            datestr(time, 'HH:MM:SS'), temp, rate, prediction);
+        lastPrint = time;
+    end
+end
+
+    function updateLEDs(a, greenPin, yellowPin, redPin, rate)
+% UPDATELEDS - Controls LEDs based on rate thresholds
+% LED States:
+%   Green  : -4°C/min < rate < +4°C/min
+%   Yellow : rate <= -4°C/min (rapid cooling)
+%   Red    : rate >= +4°C/min (rapid heating)
+    writeDigitalPin(a, greenPin,  abs(rate) < THRESHOLD);
+    writeDigitalPin(a, yellowPin, rate <= -THRESHOLD);
+    writeDigitalPin(a, redPin,    rate >= THRESHOLD);
+end
+end

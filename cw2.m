@@ -4,7 +4,7 @@
 
 %% PRELIMINARY TASK - ARDUINO AND GIT INSTALLATION [10 MARKS]
 
-a = arduino('COM4', 'Uno');
+a = arduino;
 
 for i = 1 : 10
     writeDigitalPin(a,'D2',1) %turn on the light
@@ -13,13 +13,13 @@ for i = 1 : 10
     pause(0.5)
 end
 
-clear a
-
 %% TASK 1 - READ TEMPERATURE DATA, PLOT, AND WRITE TO A LOG FILE [20 MARKS]
+
+clear; clc;
 % a)
 % photo
 % b)
-a = arduino('COM4', 'Uno');
+a = arduino;
 analogPin = 'A0';
 
 % Sensor parameters (MCP9700A)
@@ -67,11 +67,9 @@ fprintf(data_table, output); % write the text into the file opened before
 fclose(data_table); % close the file
 disp(output) % show data on the screen
 
-clear a
-
-
-
 %% TASK 2 - LED TEMPERATURE MONITORING DEVICE IMPLEMENTATION [25 MARKS]
+
+clear; clc;
 % a)
 %photo
 % b) to g)
@@ -91,7 +89,7 @@ temp_monitor(a,'A0','D4','D3','D2');
 doc temp_monitor
 
 %% TASK 3 - ALGORITHMS – TEMPERATURE PREDICTION [25 MARKS]
-clear all
+clear; clc;
 a=arduino;
 analogPin = 'A0';
 temp_prediction_optimized(a,'A0','D4','D3','D2');

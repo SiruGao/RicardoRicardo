@@ -67,11 +67,9 @@ fprintf(data_table, output); % write the text into the file opened before
 fclose(data_table); % close the file
 disp(output) % show data on the screen
 
-clear a
-
-
-
 %% TASK 2 - LED TEMPERATURE MONITORING DEVICE IMPLEMENTATION [25 MARKS]
+
+clear; clc;
 % a)
 %photo
 % b) to g)
@@ -91,7 +89,7 @@ temp_monitor(a,'A0','D4','D3','D2');
 doc temp_monitor
 
 %% TASK 3 - ALGORITHMS – TEMPERATURE PREDICTION [25 MARKS]
-clear all
+clear; clc;
 a=arduino;
 analogPin = 'A0';
 temp_prediction_optimized(a,'A0','D4','D3','D2');
@@ -107,6 +105,6 @@ doc temp_prediction_optimized
 
 %Strengths:The project’s core strengths lie in its modular architecture and robust algorithm design. By separating sensor interfacing, data analysis, and output control into distinct functional units, the system achieved flexibility and ease of debugging. The adoption of linear regression for trend analysis demonstrated superior performance compared to basic rate calculation methods, yielding more accurate temperature predictions. Professional implementation details such as ANSI-enhanced console output and comprehensive error handling further strengthened the system’s reliability. These features not only met but exceeded the coursework requirements, showcasing strong integration of software and hardware components.
 
-%However, certain limitations became apparent during development. The fixed 30-second analysis window, while effective for short-term trends, may not adapt well to varying environmental conditions. The linear prediction model’s assumption of constant change rates also restricts long-term forecasting accuracy. Hardware constraints, particularly the thermistor’s ±2°C measurement tolerance, occasionally impacted result precision. Additionally, the lack of hardware debouncing mechanisms left potential vulnerabilities in scenarios requiring manual input.
+%Limitations:However, certain limitations became apparent during development. The fixed 30-second analysis window, while effective for short-term trends, may not adapt well to varying environmental conditions. The linear prediction model’s assumption of constant change rates also restricts long-term forecasting accuracy. Hardware constraints, particularly the thermistor’s ±2°C measurement tolerance, occasionally impacted result precision. Additionally, the lack of hardware debouncing mechanisms left potential vulnerabilities in scenarios requiring manual input.
 
-%Future iterations could significantly enhance the system through several strategic improvements. Adaptive algorithms that dynamically adjust the analysis window based on environmental variability would improve responsiveness. Incorporating machine learning techniques or polynomial regression could address the limitations of linear prediction models. Upgrading to higher-precision sensors like the DS18B20 would boost measurement accuracy, while developing a graphical MATLAB App interface would enhance user interaction and data visualization. Extending the system to support wireless sensor networks could enable distributed monitoring applications, broadening its practical utility. These advancements would build upon the current foundation, transforming the project from a classroom exercise into a sophisticated industrial monitoring tool.
+%Improvements for future:Future iterations could significantly enhance the system through several strategic improvements. Adaptive algorithms that dynamically adjust the analysis window based on environmental variability would improve responsiveness. Incorporating machine learning techniques or polynomial regression could address the limitations of linear prediction models. Upgrading to higher-precision sensors like the DS18B20 would boost measurement accuracy, while developing a graphical MATLAB App interface would enhance user interaction and data visualization. Extending the system to support wireless sensor networks could enable distributed monitoring applications, broadening its practical utility. These advancements would build upon the current foundation, transforming the project from a classroom exercise into a sophisticated industrial monitoring tool.
